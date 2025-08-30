@@ -4,6 +4,7 @@ pipeline {
     tools {
         jdk 'JDK_HOME'
         maven 'MAVEN_HOME'
+        nodejs 'NODE_HOME'
     }
 
     environment {
