@@ -17,7 +17,7 @@ pipeline {
         BACKEND_DIR = 'crud_back'
         FRONTEND_DIR = 'crud_front'
 
-        BACKEND_WAR = 'crud_back/target/springapp1.war'
+        BACKEND_WAR = 'crud_back/springapp1.war'
         FRONTEND_WAR = 'crud_front/frontapp1.war'
     }
 
