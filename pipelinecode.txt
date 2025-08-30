@@ -7,90 +7,70 @@ pipeline {
     }
 
     environment {
-        BACKEND_DIR = 'crud_backend/crud_backend-main'
-        FRONTEND_DIR = 'crud_frontend/crud_frontend-main'
-
-        TOMCAT_URL = 'http://54.88.86.250:9090/manager/html'
+        TOMCAT_URL = 'http://51.21.158.152:9090/manager/text'
         TOMCAT_USER = 'admin'
         TOMCAT_PASS = 'admin'
 
-        BACKEND_WAR = 'springapp1.war'
-        FRONTEND_WAR = 'frontapp1.war'
+        MAIN_REPO = 'https://github.com/klu2300031699/fullstack-S201.git'
+
+        BACKEND_DIR = 'crud_back'
+        FRONTEND_DIR = 'crud_front'
+
+        BACKEND_WAR = 'crud_back/target/springapp1.war'
+        FRONTEND_WAR = 'crud_front/frontapp1.war'
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/klu2300031699/fullstack-S201.git', branch: 'main'
+                git branch: 'main', url: "${env.MAIN_REPO}"
             }
         }
 
-        stage('Build Frontend (Vite)') {
+        stage('Build React Frontend') {
             steps {
+                script {
+                    def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+                    env.PATH = "${nodeHome}/bin:${env.PATH}"
+                }
                 dir("${env.FRONTEND_DIR}") {
-                    script {
-                        def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                        env.PATH = "${nodeHome}/bin:${env.PATH}"
-                    }
                     sh 'npm install'
                     sh 'npm run build'
                 }
             }
         }
 
-        stage('Package Frontend as WAR') {
+        stage('Package React as WAR') {
             steps {
-                dir("${env.FRONTEND_DIR}") {
-                    sh """
-                        mkdir -p frontapp1_war/WEB-INF
-                        cp -r dist/* frontapp1_war/
-                        jar -cvf ../../${FRONTEND_WAR} -C frontapp1_war .
-                    """
+                script {
+                    def warDir = "${env.FRONTEND_DIR}/war_content"
+                    sh "rm -rf ${warDir}"
+                    sh "mkdir -p ${warDir}/META-INF ${warDir}/WEB-INF"
+                    sh "cp -r ${env.FRONTEND_DIR}/dist/* ${warDir}/"
+                    sh "jar -cvf ${env.FRONTEND_WAR} -C ${warDir} ."
                 }
             }
         }
 
-        stage('Build Backend (Spring Boot WAR)') {
+        stage('Build Spring Boot App') {
             steps {
                 dir("${env.BACKEND_DIR}") {
                     sh 'mvn clean package'
-                    sh "cp target/*.war ../../${BACKEND_WAR}"
+                    sh 'mv target/*.war target/springapp1.war'
                 }
             }
         }
 
-        stage('Deploy Backend to Tomcat (/springapp1)') {
+        stage('Deploy Spring Boot WAR') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${BACKEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
-                    """
-                }
+                sh "curl -u ${env.TOMCAT_USER}:${env.TOMCAT_PASS} --upload-file \"${env.BACKEND_WAR}\" \"${env.TOMCAT_URL}/deploy?path=/springapp1&update=true\""
             }
         }
 
-        stage('Deploy Frontend to Tomcat (/frontapp1)') {
+        stage('Deploy Frontend WAR') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${FRONTEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
-                    """
-                }
+                sh "curl -u ${env.TOMCAT_USER}:${env.TOMCAT_PASS} --upload-file \"${env.FRONTEND_WAR}\" \"${env.TOMCAT_URL}/deploy?path=/frontapp1&update=true\""
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Backend deployed: http://13.61.120.35:9090/springapp1"
-            echo "✅ Frontend deployed: http://13.61.120.35:9090/frontapp1"
-        }
-        failure {
-            echo "❌ Build or deployment failed"
         }
     }
 }
